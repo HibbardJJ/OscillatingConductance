@@ -13,17 +13,25 @@ from scipy.optimize import curve_fit
 #Leaf Constants
 X = 1
 m = 2
-lambda_g = 0.01
-lambda_e = 0.02
+#Rate Constants--Remember, lambda_e > lambda_g
+#Best working value for lambda_g: 0.001
+lambda_g = 0.001
+#Best working value for lambda_e: 0.02
+lambda_e = 0.005
+
 w_o = 657959000
 T_w = 4982.85
 sigma = 0.05
 R = 8.314
-c_g = 3088
+#Tentative c_g value: 1000
+c_g = 1000
 v_w = 1.8054197671114737e-05
-const = 2156
-const2 =0.5e6
-c_e = 0.4
+#const = 2e6
+const = 2e6
+#upper bound on const2 = 200000; lower bound = 0; best working value: 1
+const2 = 1000 - 10000
+#Best working value of c_e so far: 1.0e6
+c_e = 1.0e6
 
 
 #Data
@@ -32,8 +40,10 @@ data1 = np.array(data)
 time = data1[:,[0]]
 time = time - time[0]
 conductance = data1[:,[1]]
-#plot.plot(time,conductance)
-#plot.figure()
+conductance = conductance.ravel()
+'''plot.figure(1)
+plot.plot(time,conductance)
+plot.ylabel("Data")'''
 
 
 plant_data = pd.read_csv('Data1.csv')
@@ -46,17 +56,23 @@ plant_T_e = plant_data[:,2]
 
 std = 0.5*np.random.random(size=plant_time.size)
 #initial_guess = np.array([0.0,0.0,0.0,0.0,2100,3088])
-initial_guess = 0., 0., 0., 0., 2100., 3088.
+initial_guess = [lambda_g, lambda_e, c_g, c_e, const, const2]
 
-def model_g_s(independent_variables,lambda_g,lambda_e,const2,c_e,const,c_g):
+def model_g_s(independent_variables, lambda_g, lambda_e, c_g, c_e, const, const2):
     t, w_a, T_e = independent_variables
     return X*(P_g(t,w_a,T_e) - m*P_e(t,w_a,T_e))
     
-#print(curve_fit(model_g_s, (plant_time, plant_w_a, plant_T_e), conductance, initial_guess, std))
+#Curve-fit method--currently not working
+print(curve_fit(model_g_s, (plant_time, plant_w_a, plant_T_e), conductance, initial_guess))
 
-print(g_s(plant_time,plant_w_a,plant_T_e))
 
-ww=g_s(plant_time,plant_w_a,plant_T_e)
+dat=(g_s(plant_time,plant_w_a,plant_T_e))
+
+plot.figure(2)
+plot.plot(plant_time,dat,time,conductance)
+plot.figure(3)
+plot.plot(time,conductance)
+plot.ylabel("Model Data")
 
 
 #Theoretical Conductance
@@ -75,7 +91,7 @@ def w_p(w_a,T_e):
     
 #Pressure in the guard cell. Units: MPa
 def P_g(t,w_a,T_e):
-    return (((R*(T_e+273))/v_w)*np.log((w_p(w_a,T_e))/(w_i(T_e))) + c_g*R*(T_e+273) + (const)*np.exp(-lambda_g*t))*(10e-6)
+    return (((R*(T_e+273))/v_w)*np.log((w_p(w_a,T_e))/(w_i(T_e))) + c_g*R*(T_e+273) + (const)*np.exp(-lambda_g*t) + 999999)*(10e-6)
 
 
 #Functions for epidermal cell pressure function
@@ -92,5 +108,4 @@ def l(w_a,T_e):
 
 #Pressure in the epidermal cells. Units: MPa
 def P_e(t,w_a,T_e):
-    #return (np.exp(l(w_a,T_e)*lambda_e*t))*(-np.exp(-t*(lambda_g + l(w_a,T_e)*lambda_e))*lambda_e*((-np.exp(lambda_g*t)*(d(T_e) + (b(w_a,T_e) + c(T_e))*f(w_a,T_e)))/(l(w_a,T_e)*lambda_e) + ((-5e6 + b(w_a,T_e) + c(T_e))*f(w_a,T_e))/(lambda_g + l(w_a,T_e)*lambda_e)) + const2) 
     return ((np.exp(l(w_a,T_e)*lambda_e*t))*(-np.exp(-t*(lambda_g + l(w_a,T_e)*lambda_e))*lambda_e*((-np.exp(lambda_g*t)*(d(T_e) + (b(w_a,T_e) + c(T_e))*f(w_a,T_e)))/(l(w_a,T_e)*lambda_e) + ((-5e6 + b(w_a,T_e) + c(T_e))*f(w_a,T_e))/(lambda_g + l(w_a,T_e)*lambda_e)) + const2))*(10e-6)
